@@ -1,0 +1,216 @@
+---
+title: "Online Shopping Behavior"
+author: "Chirapa Muadchan, Htein Linn Thar, Natnicha Palakawong, PIN-JUI-HUANG"
+date: "11/7/2019"
+output: 
+  ioslides_presentation:
+    css: styles.css
+    fig_width: 7.5
+    fig_height: 5.5
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+options(scipen = 999) ##scientific notation suppresser
+```
+
+```{r}
+library(dplyr)
+library(kableExtra)
+library(caret) #train
+library(ggplot2)
+library(scales)
+library(nnet)
+library(graphics) #pair for cor coef
+library(magrittr) 
+library(GGally)
+library(forcats)
+library(gmodels)
+```
+
+```{r}
+shop = read.csv('online_shopping.csv')
+```
+## Introduction
+
+The internet shopping particulary in business to consumer(B2C) has risen and online shopping has become more popular to many people.
+
+<b>Objective</b><br>
+
+- To understand the consumers' perception and shopping behavior toward online retail<br>
+- To find out the buying pattern of consumers while shopping online<br>
+- To study relevance between the consumer buying decision with respect to price, time, demography and so on<br>
+- To make the successful business strategy knowledge of consumer perception<br>
+
+## Dateset
+
+Primary data is to be collected from the respondents with the help of a structured questionnaire<br>
+Sample Size: 117 parcitipants<br>
+Method: Convenience sampling<br>
+Tool: Quentionnaire<br>
+Techinique: Online Survey - Social media and friends<br>
+Independent Variable: age, gender, marital status, occupation and income<br>
+Dependent Variable: variables related to consumer behaviors<br>
+
+
+## Data Visualization
+
+```{r, include=FALSE}
+Female <- round((nrow(shop[shop$Gender == 'Female', c("Status", "Shop_Online")])/nrow(shop))*100, 3)
+Male <- round((nrow(shop[shop$Gender == 'Male', c("Status", "Shop_Online")])/nrow(shop))*100, 3)
+slices1 <- c(Female, Male)
+lbls1 <- paste(c("Female", "Male"), "\n", slices1, "%", sepd="")
+g1 <- pie(slices1, col=c("purple","orange"), labels=lbls1, main="Gender Distribution")
+
+```
+
+
+```{r, include=FALSE}
+
+slices2 <- c(22,35,38,64,26)
+lbls2 <- paste(c("Makeup", "Home Electronic", "Travelling", "Clothing", "Ticket"),slices2)
+g4 <- pie(slices2, col=c("purple","orange","green","pink","blue"), labels=lbls2, main="Top 5 items that people buy online the most")
+
+
+```
+
+
+```{r, include=FALSE}
+counts1 <- table(shop$Status)
+g2 <- barplot(counts1, main="Maritual Status Distribution", col = 'orange',
+   ylab="Number of participants", las = 2 )
+
+```
+
+```{r, include=FALSE }
+data = shop[,c(2,9)]
+counts2 <- table(data$Gender, data$Shopping_TimeSpent_Monthly)
+
+g3 <- barplot(counts2, main="Distribution by  and Gender", ylab = "Count",
+   col=c("darkblue","red"), las = 2,
+   legend = rownames(counts2))
+ 
+
+```
+
+
+```{r}
+attach(shop)
+par(mfrow = c(2,2))
+barplot(counts2, main="Distribution by Online Shoping frequency\n and Gender", ylab = "Count",
+   col=c("darkblue","red"), las = 2,
+   legend = rownames(counts2))
+barplot(counts1, main="Marital Status Distribution", col = 'orange',
+   ylab="Number of participants", las = 2 )
+pie(slices1, col=c("grey","red"), labels=lbls1, main="Gender Distribution")
+pie(slices2, col=c("purple","orange","green","pink","blue"), labels=lbls2, main="Top 5 items that people \n buy online the most")
+
+
+```
+
+
+## Chi-square Test{.normalFont}
+To test if there is a statistically significant correlation between gender and their online shopping behavior, we can use a chi-squared test of independence. 
+
+Hypothesis<br>
+H~0~ : Gender and their online shopping behavior are independent<br>
+H~a~ : Gender and their online shopping behavior are dependent
+```{r}
+table(shop$Gender,shop$Shop_Online)
+chisq.test(table(shop$Gender,shop$Shop_Online),correct=FALSE)
+```
+Since p-value is greater than 0.05, there is no significant evidences to say that there is difference between male and female related to their behavior toward online shoping.
+
+## Chi-square Test{.normalFont}
+To test if there is a statistically significant correlation between privacy concern and people behvior on online shopping, we can use a chi-squared test of independence. 
+
+Hypothesis<br>
+H~0~ : Privacy concern and online shopping behavior are independent<br>
+H~a~ : Privacy concern and online shopping behavior are dependent
+
+```{r}
+table(shop$Privacy_Concern,shop$Shopping_Preferrence)
+chisq.test(table(shop$Privacy_Concern,shop$Shopping_Preferrence),correct=FALSE)
+```
+
+Since p-value is greater than 0.05, there is no enough evidence to conclude that privacy concern affect the online shopping behavior of people.
+
+
+## Correlation Between the Variables
+```{r, fig1, fig.height=3, fig.width=5}
+d = shop[,c(1,3,8,10)]
+d1 = na.omit(d)
+d1 %>%
+  select(Age, Monthly_Income, Browsing_Time, Shopping_MoneySpent_Monthly) %>%
+## Overwrite the original name of variables
+  set_colnames(c("Age", "Income", "Browsing", "Spend")) %>%
+  ggcorr(palette = "Spectral", label = TRUE, limits = FALSE, low = "darkred", mid = "orange", high = "green4", midpoint = 0.67, label_round = 2)
+```
+
+The Pearson correlation coefficient indicates a moderate __*linear*__ correlation between spending and monthly income.
+
+## Linear Regression Model{.smaller}
+<b>Model 1 : Shopping_MoneySpent_Monthly = Age + Monthly_Income + Browsing_Time</b>
+```{r}
+m1 = lm(Shopping_MoneySpent_Monthly~Age+Monthly_Income+Browsing_Time, d1)
+summary(m1)
+
+```
+
+## Linear Regression Model{.smaller}
+<b>Model 2  Shopping_MoneySpent_Monthly =  Monthly_Income</b>
+```{r}
+m2 = lm(Shopping_MoneySpent_Monthly~Monthly_Income, d1)
+summary(m2)
+
+
+```
+
+## Compare model 1 and 2{.smaller}
+
+```{r}
+anova(m1,m2)
+
+```
+We compare these two models using anova. As can be seen, the p-vlaue is greater than 0.05,and we can say there is no difference between these two models. This means we just need one predictor which is Monthly_Income to predict the outcome of our model.
+
+
+## Limitation
+
+<b>External Validity</b><br>
+
+- Online survey<br>
+- Convinience sampling<br>
+- Not representative<br>
+
+<b>Internal Validity</b><br>
+
+- Sample size was only 117<br>
+- The age range was not diverse which would also affect IV such as income and marital status<br>
+- Some of the participants didn't complete the survey<br>
+
+
+## Conclusion
+
+<b>Learning</b><br>
+
+- Comprehensive idea of online consumer behavior<br>
+- A strong relation exists between monthly income, occupation and purchase decision of respondents. <br>
+
+
+<b>Future Research</b><br>
+
+- Enhance sampling size to improve external validity<br>
+- Choose random sampling instead of convience sampling to achieve diversity<br>
+
+## References
+
+- Kabacoff, Robert I. "Quick-R by DataCamp." 2017. Sitemap. 5 December 2019. <https://www.statmethods.net/graphs><br>
+
+- "Chi-Square Test in R | Explore the Examples and Essential concepts!" 10 July 2019. Data Flair. 4 December 2019. <https://data-flair.training/blogs/chi-square-test-in-r/><br>
+
+- Xie, Yihui. "Title slide." 12 May 2019. GitHub. 5 December 2019. <https://github.com/yihui/xaringan/wiki/Title-slide><br>
+
+- Porras, Eladio Montero. "Linear Regression in R." 18 July 2018. Data Camp. 5 December 2019. <https://www.datacamp.com/community/tutorials/linear-regression-R>
+
